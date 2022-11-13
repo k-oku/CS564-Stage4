@@ -224,9 +224,9 @@ const Status HeapFileScan::scanNext(RID& outRid)
     int 	nextPageNo;
     Record      rec;
 
-    // TODO: pin page
+    // Don't need to read/pin page ???
     while (true) {
-        // Get the next RID, either from the current, or the next, page
+        // Get the next RID, either from the current or the next page
         if (curPage->nextRecord(curRec, nextRid) == OK)
             status = curPage->getRecord(nextRid, rec); 
         else {
@@ -376,18 +376,28 @@ const Status InsertFileScan::insertRecord(const Record & rec, RID& outRid)
         return INVALIDRECLEN;
     }
 
-    
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+    // Don't need to read/pin page ???
+
+    // Look for page to insert
+    while (curPage->insertRecord(rec, rid) == NOSPACE) {
+        // Get next page
+        curPage->getNextPage(newPageNo);
+        status = bufMgr->readPage(filePtr, newPageNo, newPage);
+        if (status != OK) return status;
+        // Unpin current page
+        unpinstatus = bufMgr->unPinPage(filePtr, curPageNo, curDirtyFlag);
+        curPage = newPage;
+        curPageNo = newPageNo;
+    }
+    curDirtyFlag = true;
+    outRid = rid;
+
+    // Update header
+    ++(headerPage->recCnt);
+    hdrDirtyFlag = true; 
+    // unpinstatus = bufMgr->unPinPage(filePtr, newPageNo, true);
+
+    return OK;
 }
 
 
