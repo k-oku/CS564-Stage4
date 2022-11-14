@@ -381,11 +381,8 @@ const Status InsertFileScan::insertRecord(const Record & rec, RID& outRid)
     status = bufMgr->readPage(filePtr, newPageNo, newPage);
     if (status != OK) return status;
 
-    // Look for page to insert
-    while (curPage->insertRecord(rec, rid) == NOSPACE) {
-        // Get next page
-        curPage->getNextPage(newPageNo);
-        status = bufMgr->readPage(filePtr, newPageNo, newPage);
+    if (curPage->insertRecord(rec, rid) != OK) {
+        status = bufMgr->allocPage(filePtr, newPageNo, newPage);
         if (status != OK) return status;
         // Unpin current page
         unpinstatus = bufMgr->unPinPage(filePtr, curPageNo, curDirtyFlag);
