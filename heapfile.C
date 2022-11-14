@@ -388,6 +388,8 @@ const Status InsertFileScan::insertRecord(const Record & rec, RID& outRid)
         unpinstatus = bufMgr->unPinPage(filePtr, curPageNo, curDirtyFlag);
         curPage = newPage;
         curPageNo = newPageNo;
+        status = curPage->insertRecord(rec, rid);
+        if (status != OK) return status; 
     }
     curDirtyFlag = true;
     outRid = rid;
