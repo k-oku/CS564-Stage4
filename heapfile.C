@@ -52,16 +52,45 @@ HeapFile::HeapFile(const string & fileName, Status& returnStatus)
     if ((status = db.openFile(fileName, filePtr)) == OK)
     {
 		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
+		//do not forget to save the File* returned in the filePtr data member
+        File* file = filePtr;
+        int pageNo = -1;
+        //get header page
+        status = filePtr->getFirstPage(pageNo);
+        if (status != OK) {
+            cerr << "getFirstPage failed \n";
+            returnStatus = status;
+            return;
+        } 
+        //read and pin header page for file in buffer pool
+        status = bufMgr->readPage(file, headerPageNo, pagePtr);
+        if(status != OK) {
+            cerr << "readPage failed \n";
+            returnStatus = status;
+            return;
+        }
+
+        //initializing the private data members headerPage, headerPageNo, and hdrDirtyFlag
+        headerPage = (FileHdrPage*) pagePtr;
+        headerPageNo = pageNo;
+        hdrDirtyFlag = false;
+
+        //read and pin the first page of the file
+        int firstPageNo = headerPage->firstPage;
+        status = bufMgr->readPage(filePtr, firstPageNo, curPage);
+        if(status != OK) {
+            cerr << "readPage failed \n";
+            returnStatus = status;
+            return;
+        }
+        //init curPage, curPageNo, and curDirtyFlag
+        curPage = pagePtr;
+        curPageNo = firstPageNo;
+        curDirtyFlag = false;
+        //set curRec to NULLRID
+        curRec = NULLRID;
+        returnStatus = OK;
+        return;
     }
     else
     {
@@ -120,7 +149,31 @@ const Status HeapFile::getRecord(const RID & rid, Record & rec)
     Status status;
 
     // cout<< "getRecord. record (" << rid.pageNo << "." << rid.slotNo << ")" << endl;
-   
+    
+    //If the desired record is on the currently pinned page
+    if(curPage && curPageNo == rid.pageNo) {
+        //curPage->getRecord(rid, rec) to get the record
+        status=curPage->getRecord(rid, rec);
+    } else {
+        //otherwise, unpin currently pinned page (assuming a page is pinned)
+        status = bufMgr->unPinPage(filePtr, curPageNo, curDirtyFlag);
+        if (status != OK) {
+            return status;
+        }
+        curPageNo = rid.pageNo;
+        curRec = rid;
+        curDirtyFlag = false;
+        //use pageNo field of RID to read the page into the buffer pool
+        status = bufMgr->readPage(filePtr, curPageNo, curPage);
+        if(status != OK) {
+            return status;
+        }
+        //return pointer to the record via rec
+        status = curPage->getRecord(curRec,rec);
+
+    }
+
+    return status;
    
    
    
@@ -398,7 +451,6 @@ const Status InsertFileScan::insertRecord(const Record & rec, RID& outRid)
     ++(headerPage->recCnt);
     hdrDirtyFlag = true; 
     // unpinstatus = bufMgr->unPinPage(filePtr, newPageNo, true);
-
     return OK;
 }
 
