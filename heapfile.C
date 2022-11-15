@@ -1,6 +1,7 @@
 #include "heapfile.h"
 #include "error.h"
 
+// TODO add comments and stuff up here
 // routine to create a heapfile
 const Status createHeapFile(const string fileName)
 {
@@ -18,22 +19,48 @@ const Status createHeapFile(const string fileName)
 		// file doesn't exist. First create it and allocate
 		// an empty header page and data page.
 		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
+		// create a db level file by calling db->createfile()
+        status = db.createFile(fileName);
+        if (status != OK) {
+            return status;
+        }
+        // Then, allocate an empty page by invoking bm->allocPage() appropriately
+        status = bufMgr->allocPage(file, newPageNo, newPage);
+        if (status != OK) {
+            return status;
+        }
+        // allocPage() will return a pointer to an empty page in the buffer pool along with the page number of the page.
+        // Take the Page* pointer returned from allocPage() and cast it to a FileHdrPage*
+        hdrPage = (FileHdrPage*) newPage;
+        // Using this pointer initialize the values in the header page.
+        // as this is header page, it is the first page.
+        hdrPageNo = newPageNo;
+        // additionally, set file name.
+        strcpy(hdrPage->fileName, fileName.c_str()); // need .c_str because fileName is a const string 
+        // Then make a second call to bm->allocPage(). This page will be the first data page of the file.
+        status = bufMgr->allocPage(file, newPageNo, newPage);
+        if (status != OK) {
+            return status;
+        }
+        // Using the Page* pointer returned, invoke its init() method to initialize the page contents.
+        newPage->init(newPageNo);
+        // Finally, store the page number of the data page in firstPage and lastPage attributes of the FileHdrPage.
+        hdrPage->firstPage = newPageNo;
+        hdrPage->lastPage = newPageNo;
+        // When you have done all this unpin both pages and mark them as dirty.
+        status = bufMgr->unPinPage(file, hdrPageNo, true); // "true" marks dirty bit
+        if (status != OK) {
+            return status;
+        }
+        status = bufMgr->unPinPage(file, newPageNo, true); // ditto
+        if (status != OK) {
+            return status;
+        }
+		// all done, return OK
+		return OK;
     }
     return (FILEEXISTS);
 }
-
 // routine to destroy a heapfile
 const Status destroyHeapFile(const string fileName)
 {
