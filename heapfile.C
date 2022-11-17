@@ -179,6 +179,7 @@ const Status HeapFile::getRecord(const RID & rid, Record & rec)
     // cout<< "getRecord. record (" << rid.pageNo << "." << rid.slotNo << ")" << endl;
     
     //If the desired record is on the currently pinned page
+
     if(curPage && curPageNo == rid.pageNo) {
         //curPage->getRecord(rid, rec) to get the record
         status=curPage->getRecord(rid, rec);
@@ -198,7 +199,6 @@ const Status HeapFile::getRecord(const RID & rid, Record & rec)
         }
         //return pointer to the record via rec
         status = curPage->getRecord(curRec,rec);
-
     }
 
     return status;
@@ -305,9 +305,6 @@ const Status HeapFileScan::scanNext(RID& outRid)
     int 	nextPageNo;
     Record      rec;
 
-    status = bufMgr->readPage(filePtr, curPageNo, curPage);  // Also pin the page
-    if (status != OK) return status;
-
     while (true) {
         // Get the next RID, either from the current or the next page
         if (curPage->nextRecord(curRec, nextRid) == OK)
@@ -315,7 +312,6 @@ const Status HeapFileScan::scanNext(RID& outRid)
         else {
             do {
                 status = bufMgr->unPinPage(filePtr, curPageNo, curDirtyFlag);
-                if (status != OK) return status;
                 curPage->getNextPage(nextPageNo);
 
                 status = bufMgr->readPage(filePtr, nextPageNo, curPage);  // Also pin the new page
@@ -328,15 +324,13 @@ const Status HeapFileScan::scanNext(RID& outRid)
         status = curPage->getRecord(nextRid, rec); 
         if (status != OK) break;
         
-        // Check preidicate
+        // Check predicate
         if (matchRec(rec)) {
             curRec = outRid = nextRid;
             break;
         } 
     }	
-
     // Sneaky
-    bufMgr->unPinPage(filePtr, curPageNo, curPage);
 	
 	return status;
 }
@@ -473,16 +467,10 @@ const Status InsertFileScan::insertRecord(const Record & rec, RID& outRid)
         return INVALIDRECLEN;
     }
 
-    status = bufMgr->readPage(filePtr, curPageNo, curPage);
-    if (status != OK) {
-        return status; 
-    }
+
     if (curPage->insertRecord(rec, rid) != OK) {
         status = bufMgr->allocPage(filePtr, newPageNo, newPage);
         if (status != OK) {
-            cerr << "3\n";
-            Error err;
-            err.print(status);
             return status; 
         }        
         // Unpin current page
@@ -503,7 +491,7 @@ const Status InsertFileScan::insertRecord(const Record & rec, RID& outRid)
     // Update header
     ++(headerPage->recCnt);
     hdrDirtyFlag = true; 
-    unpinstatus = bufMgr->unPinPage(filePtr, curPageNo, curDirtyFlag);
+ 
     return OK;
 }
 
