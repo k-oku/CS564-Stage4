@@ -334,6 +334,9 @@ const Status HeapFileScan::scanNext(RID& outRid)
             break;
         } 
     }	
+
+    // Sneaky
+    bufMgr->unPinPage(filePtr, curPageNo, curPage);
 	
 	return status;
 }
@@ -477,23 +480,30 @@ const Status InsertFileScan::insertRecord(const Record & rec, RID& outRid)
     if (curPage->insertRecord(rec, rid) != OK) {
         status = bufMgr->allocPage(filePtr, newPageNo, newPage);
         if (status != OK) {
+            cerr << "3\n";
+            Error err;
+            err.print(status);
             return status; 
-        }        // Unpin current page
+        }        
+        // Unpin current page
         unpinstatus = bufMgr->unPinPage(filePtr, curPageNo, curDirtyFlag);
+        
+        newPage->init(newPageNo);
         curPage = newPage;
         curPageNo = newPageNo;
+        
         status = curPage->insertRecord(rec, rid);
         if (status != OK) {
             return status; 
         }
-    }
+    } 
     curDirtyFlag = true;
     outRid = rid;
 
     // Update header
     ++(headerPage->recCnt);
     hdrDirtyFlag = true; 
-    // unpinstatus = bufMgr->unPinPage(filePtr, newPageNo, true);
+    unpinstatus = bufMgr->unPinPage(filePtr, curPageNo, curDirtyFlag);
     return OK;
 }
 
