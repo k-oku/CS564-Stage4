@@ -1,3 +1,14 @@
+/*
+* Brandon Frauenfeld, 907 708 3880, frauenfeld
+* Kath Oku, 907 869 6235, kmoku
+* Khai Bui, 907 264 9824, kmbui2
+*
+* This file is a part of the HeapFile Manager for the database management system - Minirel -  
+* specified in Project Stage 4 description
+* 
+* heapfile.C implements the heapfile routines, and the HeapFile, HeapFileScan, InsertFileScan classes as declared in heapfile.h.
+*/
+
 #include "heapfile.h"
 #include "error.h"
 
@@ -319,7 +330,13 @@ const Status HeapFileScan::resetScan()
     return OK;
 }
 
-
+/*
+* Fetch the RID of the next record that satisfies the given predicate
+*
+* @param outRid The RID of the next record
+*
+* @return status OK if successful, otherwise relay the error status
+*/
 const Status HeapFileScan::scanNext(RID& outRid)
 {
     Status 	status = OK;
@@ -328,6 +345,7 @@ const Status HeapFileScan::scanNext(RID& outRid)
     int 	nextPageNo;
     Record      rec;
 
+    // Check for the EOF or uninitialized page
     if (curPageNo == -1)
         return FILEEOF;
 
@@ -336,6 +354,7 @@ const Status HeapFileScan::scanNext(RID& outRid)
         if (status != OK) return status;
     }
     tmpRid = curRec;
+
     while (true) {
         // Get the next RID, either from the current or the next page
         if (curPage->nextRecord(tmpRid, nextRid) != OK) {
@@ -343,7 +362,7 @@ const Status HeapFileScan::scanNext(RID& outRid)
                 curPage->getNextPage(nextPageNo);
                 if (nextPageNo == -1 || curPageNo == headerPage->lastPage || curPageNo == -1)
                     return FILEEOF;
-                status = bufMgr->unPinPage(filePtr, curPageNo, curDirtyFlag);
+                status = bufMgr->unPinPage(filePtr, curPageNo, curDirtyFlag); // Unpin current page
                 if (status != OK) return status;
                 status = bufMgr->readPage(filePtr, nextPageNo, curPage);  // Also pin the new page
                 if (status != OK) return status;
@@ -360,6 +379,7 @@ const Status HeapFileScan::scanNext(RID& outRid)
             curRec = outRid = nextRid;
             break;
         } 
+        // Continue searching
         tmpRid = nextRid;
     }	
 	
@@ -483,7 +503,14 @@ InsertFileScan::~InsertFileScan()
     }
 }
 
-// Insert a record into the file
+/*
+* Insert a record into the file and return its' RID
+*
+* @param rec The Record object that will be inserted
+* @param outRid The corresponding RID of the inserted record
+*
+* @return status OK if successful, otherwise relay the error status
+*/
 const Status InsertFileScan::insertRecord(const Record & rec, RID& outRid)
 {
     Page*	newPage;
@@ -498,11 +525,13 @@ const Status InsertFileScan::insertRecord(const Record & rec, RID& outRid)
         return INVALIDRECLEN;
     }
 
+    // Read the last page if curPage isn't initialized
     if (curPage == NULL) {
         curPageNo = headerPage->lastPage;
         status = bufMgr->readPage(filePtr, curPageNo, curPage);
     }
 
+    // Insert record in the current, or the next page
     if (curPage->insertRecord(rec, rid) != OK) {
         status = bufMgr->allocPage(filePtr, newPageNo, newPage);
         if (status != OK) {
@@ -512,14 +541,18 @@ const Status InsertFileScan::insertRecord(const Record & rec, RID& outRid)
         // Unpin current page
         unpinstatus = bufMgr->unPinPage(filePtr, curPageNo, curDirtyFlag);
         
+        // Set new page as curPage
         newPage->init(newPageNo);
         curPage = newPage;
         curPageNo = newPageNo;
         curDirtyFlag = false;
-        
+
+        // Update header on the new page        
         hdrDirtyFlag = true; 
         ++(headerPage->pageCnt);
         headerPage->lastPage = curPageNo;
+
+        // Insert record in the new page
         status = curPage->insertRecord(rec, rid);
         if (status != OK) {
             return status; 
@@ -528,7 +561,7 @@ const Status InsertFileScan::insertRecord(const Record & rec, RID& outRid)
     curDirtyFlag = true;
     outRid = rid;
 
-    // Update header
+    // Update header on the new record
     hdrDirtyFlag = true; 
     ++(headerPage->recCnt);
     return OK;
