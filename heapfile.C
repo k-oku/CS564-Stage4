@@ -1,8 +1,10 @@
 #include "heapfile.h"
 #include "error.h"
 
-// TODO add comments and stuff up here
-// routine to create a heapfile
+/* Routine to create a heapfile
+* @param const string fileName - the fileName of the new file created
+* @Return status, OK if no errors, or not OK depending on function errors
+*/
 const Status createHeapFile(const string fileName)
 {
     File* 		file;
@@ -60,7 +62,7 @@ const Status createHeapFile(const string fileName)
         if (status != OK) {
             return status;
         }
-        db.closeFile(file);
+        db.closeFile(file); // close or else delete segfaults
 		// all done, return OK
 		return OK;
     }
