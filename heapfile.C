@@ -48,7 +48,7 @@ const Status createHeapFile(const string fileName)
         // Finally, store the page number of the data page in firstPage and lastPage attributes of the FileHdrPage.
         hdrPage->firstPage = newPageNo;
         hdrPage->lastPage = newPageNo;
-	    // init other parts of hdrPage (to be safe)
+	// init other parts of hdrPage (to be safe)
         hdrPage->recCnt = 0;
         hdrPage->pageCnt = 1;
         // When you have done all this unpin both pages and mark them as dirty.
@@ -73,7 +73,13 @@ const Status destroyHeapFile(const string fileName)
 	return (db.destroyFile(fileName));
 }
 
-// constructor opens the underlying file
+/*
+*   HeapFile Constructor - opens the underlying file
+*
+*   @params fileName - name of file (string)
+*   @params resturnStatus - returns OK if successful
+*
+*/
 HeapFile::HeapFile(const string & fileName, Status& returnStatus)
 {
     Status 	status;
@@ -98,7 +104,7 @@ HeapFile::HeapFile(const string & fileName, Status& returnStatus)
         //read and pin header page for file in buffer pool
         status = bufMgr->readPage(file, pageNo, pagePtr);
         if(status != OK) {
-            cerr << "readPage failed 1\n";
+            cerr << "readPage failed \n";
             returnStatus = status;
             return;
         }
@@ -112,7 +118,7 @@ HeapFile::HeapFile(const string & fileName, Status& returnStatus)
         int firstPageNo = headerPage->firstPage;
         status = bufMgr->readPage(filePtr, firstPageNo, curPage);
         if(status != OK) {
-            cerr << "readPage failed 2\n";
+            cerr << "readPage failed \n";
             returnStatus = status;
             return;
         }
@@ -172,11 +178,18 @@ const int HeapFile::getRecCnt() const
   return headerPage->recCnt;
 }
 
-// retrieve an arbitrary record from a file.
-// if record is not on the currently pinned page, the current page
-// is unpinned and the required page is read into the buffer pool
-// and pinned.  returns a pointer to the record via the rec parameter
 
+/*
+*   retrieve an arbitrary record from a file.
+*   if record is not on the currently pinned page, the current page
+*   is unpinned and the required page is read into the buffer pool
+*   and pinned.  returns a pointer to the record via the rec parameter
+*
+*   @params rid - record ID
+*   @params red - reference to record
+*
+*   @return status if successful, returns record via rec param
+*/
 const Status HeapFile::getRecord(const RID & rid, Record & rec)
 {
     Status status;
