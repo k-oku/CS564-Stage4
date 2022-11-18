@@ -48,6 +48,9 @@ const Status createHeapFile(const string fileName)
         // Finally, store the page number of the data page in firstPage and lastPage attributes of the FileHdrPage.
         hdrPage->firstPage = newPageNo;
         hdrPage->lastPage = newPageNo;
+	// init other parts of hdrPage (to be safe)
+        hdrPage->recCnt = 0;
+        hdrPage->pageCnt = 1;
         // When you have done all this unpin both pages and mark them as dirty.
         status = bufMgr->unPinPage(file, hdrPageNo, true); // "true" marks dirty bit
         if (status != OK) {
@@ -473,6 +476,7 @@ const Status InsertFileScan::insertRecord(const Record & rec, RID& outRid)
         if (status != OK) {
             return status; 
         }        
+	curPage->setNextPage(newPageNo); // set next page to newly alloc'd page (makes sense, might cause problems?)
         // Unpin current page
         unpinstatus = bufMgr->unPinPage(filePtr, curPageNo, curDirtyFlag);
         
