@@ -2,6 +2,10 @@
 #include "error.h"
 
 /* Routine to create a heapfile
+*
+* Creates an almost empty heapfile. Initializes header page of heapfile.
+* Initializes everything properly for a header page as well.
+*
 * @param const string fileName - the fileName of the new file created
 * @Return status, OK if no errors, or not OK depending on function errors
 */
